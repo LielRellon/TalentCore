@@ -131,29 +131,6 @@ const QUICK_ACTIONS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// API
-// NOTE: In production, proxy this through your backend to protect your API key.
-// Example Next.js API route: pages/api/chat.js → calls Anthropic server-side.
-// ─────────────────────────────────────────────────────────────────────────────
-async function callClaude(system, messages) {
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",  // ← Groq's best free model
-      max_tokens: 1000,
-      messages: [
-        { role: "system", content: system },  // ← Groq puts system inside messages
-        ...messages
-      ],
-    }),
-  });
-  const d = await res.json();
-  if (d.error) throw new Error(d.error.message);
-  return d.choices?.[0]?.message?.content || "";  // ← different response format
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // SHARED COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 function Avatar({ initials, color, size = 40, online = true }) {
