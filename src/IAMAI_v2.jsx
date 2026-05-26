@@ -523,7 +523,7 @@ export default function IAMAI() {
 
   if (!selected) return (
     <div style={{ background: "#0d1117", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#475569", fontFamily: "Inter, sans-serif" }}>
-      Loading IAMAI…
+      Loading Talent Core…
     </div>
   );
 
@@ -541,8 +541,8 @@ export default function IAMAI() {
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
             <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg, #6C63FF, #00C9A7)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 16, color: "#fff", flexShrink: 0 }}>I</div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#fff", letterSpacing: 0.3 }}>IAMAI</div>
-              <div style={{ fontSize: 9.5, color: "#334155", letterSpacing: 1.2 }}>I AM AI · {employees.length} Agents</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#fff", letterSpacing: 0.3 }}>Talent Core</div>
+              <div style={{ fontSize: 9.5, color: "#334155", letterSpacing: 1.2 }}>Talent Core · {employees.length} Agents</div>
             </div>
           </div>
         </div>
@@ -601,7 +601,7 @@ export default function IAMAI() {
         </div>
 
         <div style={{ padding: "10px 14px", borderTop: "1px solid #1e2535" }}>
-          <div style={{ fontSize: 9.5, color: "#2d3748", textAlign: "center" }}>Powered by Claude · IAMAI v2.0</div>
+          <div style={{ fontSize: 9.5, color: "#2d3748", textAlign: "center" }}>Powered by Claude · Talent Core v2.0</div>
         </div>
       </div>
 
