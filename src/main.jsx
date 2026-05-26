@@ -1,5 +1,5 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import IAMAI from './IAMAI_v2'
+import TalentCore from './TalentCore_v2'
 
-ReactDOM.createRoot(document.getElementById('root')).render(<IAMAI />)
+ReactDOM.createRoot(document.getElementById('root')).render(<TalentCore />)
