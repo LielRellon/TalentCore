@@ -14,6 +14,10 @@ function systemPrompt(persona, task) {
     "You can act ONLY through the provided tools: read_file, write_file, list_dir, run_command.",
     "All paths are relative to the workspace root. You cannot access anything outside it.",
     "Work step by step: inspect, make changes, run commands to verify (e.g. run tests).",
+    "When writing Node tests, use `import { test } from 'node:test'` and `import assert from 'node:assert'`,",
+    "and assert with `assert.strictEqual(actual, expected)` / `assert.ok(value)` — the test callback's",
+    "argument is a TestContext, NOT an assertion library (do not call t.equal / t.ok / t.truthy).",
+    "Keep iterations few: write correct code the first time and avoid re-running unnecessarily.",
     "When the task is fully complete and verified, reply with a final message and NO tool calls,",
     "summarizing what you did and what changed.",
     "",
@@ -67,10 +71,13 @@ export async function runLoop(p) {
     try {
       reply = await llm.complete(messages);
     } catch (e) {
-      bus.emit("error", { message: e.code || e.message });
+      // Surface the real cause (e.g. groq_error_429) plus any provider detail so a
+      // failed run is diagnosable from the event log / UI.
+      const detail = [e.message, e.detail].filter(Boolean).join(" — ");
+      bus.emit("error", { message: detail || e.code || "unknown_error" });
       return {
         outcome: "failure",
-        reason: `provider error: ${e.code || e.message}`,
+        reason: `provider error: ${detail || e.code || e.message}`,
         summary: "The reasoning provider could not be reached.",
         iterations,
         tokensUsed,
@@ -106,15 +113,34 @@ export async function runLoop(p) {
         args = {};
       }
       const result = await dispatchTool(name, args, ctx);
-      // feed the observation back to the model
+      // Feed the observation back to the model — but trim large outputs so the
+      // conversation context (and token usage) does not balloon across iterations.
+      const observation = result.ok ? { ok: true, output: trimOutput(result.output) } : { ok: false, error: result.error };
       messages.push({
         role: "tool",
         tool_call_id: tc.id,
-        content: JSON.stringify(result.ok ? { ok: true, output: result.output } : { ok: false, error: result.error }),
+        content: JSON.stringify(observation),
       });
       if (result.halt) return halt(result.halt.kind);
     }
   }
+}
+
+// Trim large string fields (e.g. command stdout/stderr) before sending them back to
+// the model. Keeps the head + tail so errors at either end survive. Caps token growth.
+function trimOutput(output, cap = 1500) {
+  if (output == null) return output;
+  const trimStr = (s) =>
+    typeof s === "string" && s.length > cap
+      ? s.slice(0, cap) + `\n…[trimmed ${s.length - cap} chars]…\n` + s.slice(-300)
+      : s;
+  if (typeof output === "string") return trimStr(output);
+  if (typeof output === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(output)) out[k] = trimStr(v);
+    return out;
+  }
+  return output;
 }
 
 function breachField(kind) {

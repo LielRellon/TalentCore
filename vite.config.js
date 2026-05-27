@@ -7,6 +7,11 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       proxy: {
+        '/api/agent': {
+          target: 'http://localhost:8787',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/api\/agent/, ''),
+        },
         '/api/chat': {
           target: 'https://api.groq.com',
           changeOrigin: true,

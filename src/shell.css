@@ -1,0 +1,12 @@
+/* Global dark theme for the app shell + Run Console page. */
+html, body, #root {
+  margin: 0;
+  min-height: 100vh;
+  background: #0b0d13;
+  color: #e6e8ee;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: #0b0d13;
+}
