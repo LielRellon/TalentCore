@@ -48,3 +48,13 @@ export async function decideApproval(runId, callId, approved) {
 export function eventsUrl(runId) {
   return `${BASE}/runs/${runId}/events`;
 }
+
+/** List the files in a run's workspace. → { files: [{ path, type }] } */
+export async function listFiles(runId) {
+  return parse(await fetch(`${BASE}/runs/${runId}/files`));
+}
+
+/** Read one workspace file's content. → { path, kind, content?, size? } */
+export async function readFileContent(runId, filePath) {
+  return parse(await fetch(`${BASE}/runs/${runId}/files/content?path=${encodeURIComponent(filePath)}`));
+}

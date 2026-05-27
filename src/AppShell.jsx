@@ -17,7 +17,7 @@ const tabStyle = (active) => ({
 });
 
 export default function AppShell() {
-  const [view, setView] = useState("chat"); // "chat" | "console"
+  const [view, setView] = useState("console"); // "console" | "chat" — Run Console is the default
   return (
     <div className="app-shell">
       <nav style={{ display: "flex", gap: 8, padding: "8px 16px", background: "#0f1117", borderBottom: "1px solid #2a2e3a" }}>

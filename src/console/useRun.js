@@ -3,7 +3,7 @@
 // the backend api + SSE stream to it. See data-model.md.
 
 import { useCallback, useReducer, useRef } from "react";
-import { startRun as apiStartRun, getRun, decideApproval } from "../runtime/api.js";
+import { startRun as apiStartRun, getRun, decideApproval, listFiles } from "../runtime/api.js";
 import { subscribeRun } from "../runtime/stream.js";
 
 export const initialState = {
@@ -16,6 +16,8 @@ export const initialState = {
   result: null,
   error: null,
   activeRunConflict: null, // set when the backend reports a run already in progress
+  files: {},               // path -> { path, lastWriteContent?, touchedAt }
+  currentlyWriting: null,  // path of the most recent write_file (drives auto-select)
 };
 
 const TERMINAL = new Set(["completed", "failed", "halted"]);
@@ -43,6 +45,17 @@ export function reducer(state, action) {
         lastSeq: typeof e.seq === "number" ? e.seq : state.lastSeq,
       };
       switch (e.type) {
+        case "tool_call":
+          // Derive the live file list + the file being written from write_file calls.
+          if (e.data.name === "write_file" && e.data.args?.path) {
+            const p = e.data.args.path;
+            next.files = {
+              ...state.files,
+              [p]: { path: p, lastWriteContent: e.data.args.content ?? "", touchedAt: e.seq },
+            };
+            next.currentlyWriting = p;
+          }
+          break;
         case "status":
           next.status = e.data.status;
           break;
@@ -62,6 +75,16 @@ export function reducer(state, action) {
           break;
       }
       return next;
+    }
+
+    case "MERGE_FILES": {
+      // Merge a backend file listing into files (without clobbering live write content).
+      const merged = { ...state.files };
+      for (const f of action.files) {
+        if (f.type !== "file") continue;
+        if (!merged[f.path]) merged[f.path] = { path: f.path, touchedAt: 0 };
+      }
+      return { ...state, files: merged };
     }
 
     case "APPROVAL_SENT":
@@ -120,6 +143,8 @@ export function useRun() {
   const openRun = useCallback((runId) => {
     dispatch({ type: "OPEN_RUN", runId });
     subscribe(runId); // backend replays a finished run then closes; live runs continue
+    // Populate the explorer from the worktree (covers files made by run_command and reopens).
+    listFiles(runId).then((r) => dispatch({ type: "MERGE_FILES", files: r.files || [] })).catch(() => {});
   }, [subscribe]);
 
   const approve = useCallback(async () => {
@@ -141,5 +166,9 @@ export function useRun() {
     dispatch({ type: "RESET" });
   }, [closeStream]);
 
-  return { state, startRun, openRun, approve, reject, reset, getRun };
+  const refreshFiles = useCallback((runId) => {
+    listFiles(runId).then((r) => dispatch({ type: "MERGE_FILES", files: r.files || [] })).catch(() => {});
+  }, []);
+
+  return { state, startRun, openRun, approve, reject, reset, refreshFiles, getRun };
 }

@@ -9,6 +9,7 @@ import http from "node:http";
 import { config } from "../config.js";
 import { startRun, getRun, decideApproval } from "../run/manager.js";
 import { replay, runExists, readResult } from "../events/store.js";
+import { locateWorktree, listFiles, readFile, WorkspaceUnavailableError, OutsideWorkspaceError } from "../files/workspaceFiles.js";
 
 function send(res, status, body) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -66,6 +67,31 @@ export function createServer() {
           return send(res, 200, { runId, status: "completed", result: readResult(runId) });
         }
         return send(res, 404, { error: "not_found" });
+      }
+
+      // GET /runs/:id/files  — list workspace files (confined)
+      if (req.method === "GET" && parts.length === 3 && parts[0] === "runs" && parts[2] === "files") {
+        try {
+          const root = locateWorktree(parts[1]);
+          return send(res, 200, { files: listFiles(root) });
+        } catch (e) {
+          if (e instanceof WorkspaceUnavailableError) return send(res, 404, { error: "workspace_unavailable" });
+          throw e;
+        }
+      }
+
+      // GET /runs/:id/files/content?path=...  — read one file (confined)
+      if (req.method === "GET" && parts.length === 4 && parts[0] === "runs" && parts[2] === "files" && parts[3] === "content") {
+        const rel = url.searchParams.get("path") || "";
+        try {
+          const root = locateWorktree(parts[1]);
+          return send(res, 200, readFile(root, rel));
+        } catch (e) {
+          if (e instanceof OutsideWorkspaceError) return send(res, 403, { error: "outside_workspace" });
+          if (e instanceof WorkspaceUnavailableError) return send(res, 404, { error: "workspace_unavailable" });
+          if (e.code === "ENOENT") return send(res, 404, { error: "not_found" });
+          throw e;
+        }
       }
 
       // GET /runs/:id/events  (SSE)
