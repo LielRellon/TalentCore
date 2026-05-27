@@ -4,6 +4,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { config } from "../config.js";
 import { resolveInWorkspace, OutsideWorkspaceError } from "../safety/pathGuard.js";
 import { getRun } from "../run/manager.js";
@@ -26,19 +27,42 @@ export function locateWorktree(runId) {
   throw new WorkspaceUnavailableError(runId);
 }
 
-/** Recursively list files/dirs under root (POSIX-relative paths), skipping .git. */
+/**
+ * List the files the agent CHANGED in the worktree — not the whole repo checkout.
+ * The worktree is a full-repo branch off HEAD, so we use `git status` to surface only
+ * created/modified/untracked paths (renames → new path). Falls back to a recursive walk
+ * if the directory is not a git repo (e.g. unit-test temp dirs).
+ */
 export function listFiles(root) {
+  try {
+    const out = execFileSync(
+      "git",
+      ["-C", root, "status", "--porcelain", "--untracked-files=all"],
+      { encoding: "utf8" },
+    );
+    const files = [];
+    for (const line of out.split("\n")) {
+      if (!line.trim()) continue;
+      let p = line.slice(3).trim(); // strip 2-char status + space
+      if (p.includes(" -> ")) p = p.split(" -> ")[1]; // rename: take new path
+      p = p.replace(/^"|"$/g, ""); // unquote paths with special chars
+      if (p && p !== ".git" && !p.startsWith(".git/")) files.push({ path: p, type: "file" });
+    }
+    return files.sort((a, b) => a.path.localeCompare(b.path));
+  } catch {
+    return walkAll(root);
+  }
+}
+
+/** Fallback: recursively list everything under root (skip .git). */
+function walkAll(root) {
   const out = [];
   const walk = (abs, rel) => {
     for (const d of fs.readdirSync(abs, { withFileTypes: true })) {
       if (d.name === ".git") continue;
       const childRel = rel ? `${rel}/${d.name}` : d.name;
-      if (d.isDirectory()) {
-        out.push({ path: childRel, type: "dir" });
-        walk(path.join(abs, d.name), childRel);
-      } else {
-        out.push({ path: childRel, type: "file" });
-      }
+      if (d.isDirectory()) { out.push({ path: childRel, type: "dir" }); walk(path.join(abs, d.name), childRel); }
+      else out.push({ path: childRel, type: "file" });
     }
   };
   walk(root, "");

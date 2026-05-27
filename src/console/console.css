@@ -11,10 +11,13 @@
   --rc-warn: #ffb347;
   color: var(--rc-text);
   font-family: system-ui, -apple-system, sans-serif;
-  max-width: 920px;
-  margin: 0 auto;
-  padding: 16px;
+  max-width: 100%;
+  margin: 0;
+  padding: 16px 24px;
 }
+
+/* The start form reads better constrained; the live two-pane view goes full width. */
+.console-start { max-width: 720px; margin: 0 auto; }
 
 .run-console h2 { margin: 0 0 12px; }
 
