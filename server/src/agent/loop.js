@@ -18,6 +18,8 @@ function systemPrompt(persona, task) {
     "and assert with `assert.strictEqual(actual, expected)` / `assert.ok(value)` — the test callback's",
     "argument is a TestContext, NOT an assertion library (do not call t.equal / t.ok / t.truthy).",
     "Keep iterations few: write correct code the first time and avoid re-running unnecessarily.",
+    "Verify your work by running it: a command that exits non-zero means the task is NOT done —",
+    "read the error, fix it, and re-run until it exits 0. Never declare completion while a command fails.",
     "When the task is fully complete and verified, reply with a final message and NO tool calls,",
     "summarizing what you did and what changed.",
     "",
@@ -46,6 +48,13 @@ export async function runLoop(p) {
   ];
 
   const ctx = { bus, workspaceRoot, limits, filesTouched, preauth, requestApproval };
+
+  // Track the most recent command's exit code so we never accept "done" while the last
+  // command was still failing. Bounded nudges prevent fighting the model forever.
+  let lastCommandExit = null;
+  let lastCommandStderr = "";
+  let verifyNudges = 0;
+  const MAX_VERIFY_NUDGES = 2;
 
   const halt = (kind) => ({
     outcome: "halted",
@@ -93,6 +102,33 @@ export async function runLoop(p) {
 
     // --- done? (no tool calls = final answer) ---
     if (toolCalls.length === 0) {
+      // Guard against false success: if the most recent command exited non-zero, the
+      // task is not actually verified. Nudge the agent to fix it (bounded), and only
+      // accept failure if it still cannot.
+      if (typeof lastCommandExit === "number" && lastCommandExit !== 0) {
+        if (verifyNudges < MAX_VERIFY_NUDGES) {
+          verifyNudges += 1;
+          bus.emit("thought", { text: `(verification) last command exited ${lastCommandExit}; not complete yet.` });
+          messages.push({
+            role: "user",
+            content:
+              `Your most recent command exited with code ${lastCommandExit}` +
+              (lastCommandStderr ? ` (stderr: ${lastCommandStderr.slice(0, 300)})` : "") +
+              `. The task is NOT complete until that command succeeds (exit 0). ` +
+              `Diagnose and fix the cause, then re-run it. Do not claim completion while it fails.`,
+          });
+          continue; // keep working
+        }
+        // Exhausted nudges — report honest failure rather than a false success.
+        return {
+          outcome: "failure",
+          reason: `verification failed: last command exited ${lastCommandExit}`,
+          summary: msg.content || `The agent stopped but its last command exited ${lastCommandExit}.`,
+          iterations,
+          tokensUsed,
+          filesChanged: [...filesTouched],
+        };
+      }
       return {
         outcome: "success",
         reason: "task complete",
@@ -113,6 +149,11 @@ export async function runLoop(p) {
         args = {};
       }
       const result = await dispatchTool(name, args, ctx);
+      // Remember the latest command exit code for the completion-verification guard.
+      if (name === "run_command" && result.ok && result.output) {
+        lastCommandExit = result.output.exitCode;
+        lastCommandStderr = result.output.stderr || "";
+      }
       // Feed the observation back to the model — but trim large outputs so the
       // conversation context (and token usage) does not balloon across iterations.
       const observation = result.ok ? { ok: true, output: trimOutput(result.output) } : { ok: false, error: result.error };
