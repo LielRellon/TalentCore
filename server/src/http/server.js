@@ -44,6 +44,7 @@ export function createServer() {
             task: body.task,
             limits: body.limits || {},
             preauth: { autoApprove: body.autoApprove === true },
+            model: body.model, // "auto" | model id; validated in resolveModelChoice
           });
           return send(res, 201, { runId, status: "running" });
         } catch (e) {

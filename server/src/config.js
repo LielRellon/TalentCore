@@ -11,6 +11,11 @@ export const config = {
   groqApiKey: process.env.GROQ_API_KEY || "",
   groqBaseUrl: process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1",
   model: process.env.AGENT_MODEL || "llama-3.3-70b-versatile",
+  fastModel: process.env.AGENT_FAST_MODEL || "llama-3.1-8b-instant",
+  // Model choices selectable per run. "auto" starts on the quality model and falls back
+  // to the fast model on a rate-limit (429). Others are pinned.
+  allowedModelChoices: ["auto", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+  defaultModelChoice: process.env.AGENT_MODEL_CHOICE || "auto",
 
   // --- Storage locations ---
   runsDir: process.env.RUNS_DIR || path.join(REPO_ROOT, "runs"),

@@ -10,6 +10,7 @@ const grouped = DEPT_ORDER.map((dept) => ({
 export default function StartRunForm({ onStart, disabled }) {
   const [personaId, setPersonaId] = useState("sfe");
   const [task, setTask] = useState("");
+  const [model, setModel] = useState("auto");
   const [autoApprove, setAutoApprove] = useState(false);
   const [showLimits, setShowLimits] = useState(false);
   const [limits, setLimits] = useState({ maxIterations: "", maxTokens: "", maxWallClockMs: "", maxFilesTouched: "" });
@@ -29,6 +30,7 @@ export default function StartRunForm({ onStart, disabled }) {
     onStart({
       personaId,
       task: task.trim(),
+      model,
       autoApprove,
       ...(Object.keys(cleanLimits).length ? { limits: cleanLimits } : {}),
     });
@@ -60,6 +62,15 @@ export default function StartRunForm({ onStart, disabled }) {
           placeholder="e.g. Create src/email.js with isValidEmail() and a passing node:test, then run the test."
         />
         {touched && taskEmpty && <small className="field-error">Enter a task to start.</small>}
+      </label>
+
+      <label className="field">
+        <span>Model</span>
+        <select value={model} onChange={(e) => setModel(e.target.value)}>
+          <option value="auto">Auto — balanced (70B, falls back to 8B on rate limit)</option>
+          <option value="llama-3.3-70b-versatile">Llama 3.3 70B — best quality</option>
+          <option value="llama-3.1-8b-instant">Llama 3.1 8B — fastest, higher limits</option>
+        </select>
       </label>
 
       <label className="checkbox">

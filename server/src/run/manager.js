@@ -82,7 +82,7 @@ export function startRun(p) {
       setStatus("awaiting-approval", action);
     });
 
-  const llm = p.llm || createGroqLLM();
+  const llm = p.llm || createGroqLLM({ modelChoice: p.model });
 
   const done = (async () => {
     try {
