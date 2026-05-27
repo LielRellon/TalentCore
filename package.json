@@ -1,5 +1,5 @@
 {
-  "name": "iamai",
+  "name": "talentcore",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start:server": "node --env-file=.env server/src/http/server.js",
+    "agent": "node --env-file=.env server/src/cli.js",
+    "test:server": "node --test \"server/test/**/*.test.js\""
   },
   "dependencies": {
     "react": "^19.2.6",

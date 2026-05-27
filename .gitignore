@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Agent runtime artifacts (per-run logs & isolated worktrees)
+runs/
+.worktrees/
+
 # Environment variables (secrets — never commit)
 .env
 .env.local
